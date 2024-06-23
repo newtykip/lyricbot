@@ -13,7 +13,8 @@ use lyricbot::{
 use ratatui::prelude::*;
 use std::{io::stdout, time::Duration};
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     // prepare terminal
     stdout().execute(EnterAlternateScreen)?;
     enable_raw_mode()?;
@@ -51,12 +52,6 @@ fn main() -> Result<()> {
                     } else {
                         view
                     }
-
-                    // if rm_history {
-
-                    // } else {
-                    //     dyn_clone::clone_box(&*view)
-                    // }
                 }
                 Command::Stop => break,
                 Command::Confirm { message, previous } => {

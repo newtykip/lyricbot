@@ -4,10 +4,25 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[features]
+default = ["twitter", "discord"]
+twitter = ["dep:twitter-v2"]
+discord = ["dep:poise"]
+
 [dependencies]
 crossbeam-channel = "0.5.13"
 crossterm = "0.27.0"
+dirs = "5.0.1"
 dyn-clone = "1.0.17"
+lazy_static = "1.5.0"
+nanoid = "0.4.0"
 paste = "1.0.15"
+poise = { version = "0.6.1", optional = true }
+prost = "0.12.6"
 ratatui = "0.26.3"
 thiserror = "1.0.61"
+tokio = { version = "1.38.0", features = ["full"] }
+twitter-v2 = { version = "0.1.8", optional = true, default-features = false, features = ["rustls-tls"] }
+
+[build-dependencies]
+prost-build = "0.12.6"

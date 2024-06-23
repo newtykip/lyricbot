@@ -1,5 +1,5 @@
 use super::prelude::*;
-use ratatui::widgets::{block::Title, Block, Padding, Tabs};
+use ratatui::widgets::{block::Title, Block, BorderType, Borders, Padding, Tabs};
 
 #[derive(Clone)]
 pub struct Confirmation {
@@ -15,14 +15,14 @@ impl Confirmation {
 
 impl View for Confirmation {
     fn draw(&self, frame: &mut Frame, area: Rect) {
-        let layout = Layout::default()
-            .constraints(Constraint::from_fills([1, 2, 1]))
-            .split(area);
+        let layout = Layout::vertical(Constraint::from_fills([1, 2, 1])).split(area);
         let block = Block::new()
             .title(Title::from(self.message.clone()).alignment(Alignment::Center))
             .padding(Padding::left(
                 area.width / 2 - self.message.len() as u16 / 4,
-            ));
+            ))
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded);
         let tabs = Tabs::new(vec![" Yes ", " No "])
             .select(if self.yes { 0 } else { 1 })
             .divider("")

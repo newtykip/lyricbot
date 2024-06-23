@@ -1,7 +1,12 @@
 mod error;
+mod profile;
 pub mod tui;
 
-pub type Result<T> = std::result::Result<T, error::Error>;
+#[cfg(feature = "discord")]
+pub use error::CommandError;
+
+pub use error::Error;
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// How often to poll for new events in ms.
 pub const POLL_TIMEOUT: u64 = 16;

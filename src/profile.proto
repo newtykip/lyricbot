@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package profile;
+
+message Profile {
+	string name = 1;
+	optional string twitter = 2;
+	optional string discord = 3;
+}
