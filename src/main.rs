@@ -4,8 +4,11 @@ use crossterm::{
     ExecutableCommand,
 };
 use lyricbot::{
-    tui::views::{counter::Counter, ViewChange, ViewContainer},
-    Result, HISTORY_LIMIT, POLL_TIMEOUT,
+    tui::{
+        views::{confirmation::Confirmation, counter::Counter, ViewContainer},
+        Command,
+    },
+    Result, HISTORY_SIZE, POLL_TIMEOUT,
 };
 use ratatui::prelude::*;
 use std::{io::stdout, time::Duration};
@@ -22,21 +25,44 @@ fn main() -> Result<()> {
     // main logic
     let mut history = vec![];
     let mut view: ViewContainer = Box::new(Counter::default());
-    let (view_tx, view_rx) = crossbeam_channel::bounded(1);
+    let mut confirm_prev = None::<ViewContainer>;
+    let (command_tx, view_rx) = crossbeam_channel::bounded(1);
 
     loop {
         // check if the view has changed
         if let Ok(command) = view_rx.try_recv() {
             view = match command {
-                ViewChange::New(new_view) => {
-                    if history.len() == HISTORY_LIMIT {
+                Command::ChangeView { view: new_view } => {
+                    if history.len() == HISTORY_SIZE {
                         history.remove(0);
                     }
                     history.push(view);
+
                     new_view
                 }
-                ViewChange::Back if history.len() > 0 => history.pop().unwrap(),
-                _ => view,
+                Command::BackView => {
+                    if let Some(ref prev) = confirm_prev {
+                        let x = dyn_clone::clone_box(&**prev);
+                        confirm_prev = None;
+                        x
+                    } else if history.len() > 0 {
+                        let x = history.pop();
+                        x.unwrap()
+                    } else {
+                        view
+                    }
+
+                    // if rm_history {
+
+                    // } else {
+                    //     dyn_clone::clone_box(&*view)
+                    // }
+                }
+                Command::Stop => break,
+                Command::Confirm { message, previous } => {
+                    confirm_prev = Some(previous);
+                    Box::new(Confirmation::new(message))
+                }
             };
         }
 
@@ -50,16 +76,18 @@ fn main() -> Result<()> {
         if event::poll(Duration::from_millis(POLL_TIMEOUT))? {
             match event::read()? {
                 Event::Key(key) if key.kind == KeyEventKind::Press => {
-                    view.keypress(key, &view_tx)?;
+                    view.keypress(key, &command_tx)?;
 
-                    // global keybinds
-                    match key.code {
-                        // q and ctrl+c quit
-                        KeyCode::Char('q') => break,
-                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            break
-                        }
-                        _ => {}
+                    // q and ctrl+c quit
+                    if key.code == KeyCode::Char('q')
+                        || (key.code == KeyCode::Char('c')
+                            && key.modifiers.contains(KeyModifiers::CONTROL))
+                            && confirm_prev.is_none()
+                    {
+                        command_tx.send(Command::Confirm {
+                            message: "Are you sure you want to quit?".to_string(),
+                            previous: dyn_clone::clone_box(&*view),
+                        })?;
                     }
                 }
                 _ => {}

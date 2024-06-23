@@ -7,4 +7,4 @@ pub type Result<T> = std::result::Result<T, error::Error>;
 pub const POLL_TIMEOUT: u64 = 16;
 
 /// How many views to keep in history.
-pub const HISTORY_LIMIT: usize = 3;
+pub const HISTORY_SIZE: usize = 3;

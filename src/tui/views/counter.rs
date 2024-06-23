@@ -1,23 +1,16 @@
-use crate::{
-    change_view,
-    tui::views::{View, ViewChange, ViewSender},
-    Result,
-};
-use crossterm::event::{KeyCode, KeyEvent};
-use ratatui::{prelude::*, widgets::Paragraph};
-use std::cell::Cell;
+use super::prelude::*;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Counter {
-    count: Cell<i8>,
+    count: i8,
 }
 
 impl View for Counter {
     fn draw(&self, frame: &mut Frame, area: Rect) {
-        frame.render_widget(Paragraph::new(self.count.get().to_string()), area);
+        frame.render_widget(Paragraph::new(self.count.to_string()), area);
     }
 
-    fn keypress(&self, key: KeyEvent, view_tx: &ViewSender) -> Result<()> {
+    fn keypress(&mut self, key: KeyEvent, view_tx: &CommandSender) -> Result<()> {
         match key.code {
             KeyCode::Char('=') | KeyCode::Char('-') => {
                 let dx = if key.code == KeyCode::Char('=') {
@@ -25,13 +18,13 @@ impl View for Counter {
                 } else {
                     -1
                 };
-                self.count.set(self.count.get() + dx);
+                self.count = self.count.saturating_add(dx);
             }
             KeyCode::Backspace => {
                 change_view!(view_tx, Counter)?;
             }
             KeyCode::Esc => {
-                view_tx.send(ViewChange::Back)?;
+                view_tx.send(Command::BackView)?;
             }
             _ => {}
         }
