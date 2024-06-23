@@ -949,7 +949,7 @@ dependencies = [
 name = "lyricbot"
 version = "0.1.0"
 dependencies = [
- "crossbeam-channel",
+ "async-trait",
  "crossterm",
  "dirs",
  "dyn-clone",

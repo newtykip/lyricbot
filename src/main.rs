@@ -5,13 +5,18 @@ use crossterm::{
 };
 use lyricbot::{
     tui::{
-        views::{confirmation::Confirmation, counter::Counter, ViewContainer},
+        views::{
+            confirmation::{ConfirmData, Confirmation},
+            counter::Counter,
+            ViewContainer,
+        },
         Command,
     },
     Result, HISTORY_SIZE, POLL_TIMEOUT,
 };
 use ratatui::prelude::*;
 use std::{io::stdout, time::Duration};
+use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -26,10 +31,21 @@ async fn main() -> Result<()> {
     // main logic
     let mut history = vec![];
     let mut view: ViewContainer = Box::new(Counter::default());
-    let mut confirm_prev = None::<ViewContainer>;
-    let (command_tx, view_rx) = crossbeam_channel::bounded(1);
+    let mut confirm_data = None::<ConfirmData>;
+    let (confirm_tx, mut confirm_rx) = mpsc::channel(1);
+    let (command_tx, mut view_rx) = mpsc::channel(1);
 
     loop {
+        // check if there is a new confirmation update
+        if let Ok(()) = confirm_rx.try_recv() {
+            if let Some(ConfirmData { ref mut action, .. }) = confirm_data {
+                let action = std::mem::replace(action, Box::new(|| None));
+                if let Some(command) = action() {
+                    command_tx.send(command).await?;
+                }
+            }
+        }
+
         // check if the view has changed
         if let Ok(command) = view_rx.try_recv() {
             view = match command {
@@ -42,10 +58,9 @@ async fn main() -> Result<()> {
                     new_view
                 }
                 Command::BackView => {
-                    if let Some(ref prev) = confirm_prev {
-                        let x = dyn_clone::clone_box(&**prev);
-                        confirm_prev = None;
-                        x
+                    if let Some(ConfirmData { previous, .. }) = confirm_data {
+                        confirm_data = None;
+                        previous
                     } else if history.len() > 0 {
                         let x = history.pop();
                         x.unwrap()
@@ -53,10 +68,23 @@ async fn main() -> Result<()> {
                         view
                     }
                 }
-                Command::Stop => break,
-                Command::Confirm { message, previous } => {
-                    confirm_prev = Some(previous);
-                    Box::new(Confirmation::new(message))
+                Command::Confirm(message, ConfirmData { previous, action }) => {
+                    confirm_data = Some(ConfirmData { action, previous });
+                    Box::new(Confirmation::new(message, confirm_tx.clone()))
+                }
+                Command::Quit => {
+                    if confirm_data.is_some() {
+                        break;
+                    } else {
+                        confirm_data = Some(ConfirmData {
+                            previous: view,
+                            action: Box::new(|| Some(Command::Quit)),
+                        });
+                        Box::new(Confirmation::new(
+                            "Are you sure you want to quit?".to_string(),
+                            confirm_tx.clone(),
+                        ))
+                    }
                 }
             };
         }
@@ -71,18 +99,24 @@ async fn main() -> Result<()> {
         if event::poll(Duration::from_millis(POLL_TIMEOUT))? {
             match event::read()? {
                 Event::Key(key) if key.kind == KeyEventKind::Press => {
-                    view.keypress(key, &command_tx)?;
+                    view.keypress(key, &command_tx).await?;
 
                     // q and ctrl+c quit
                     if key.code == KeyCode::Char('q')
                         || (key.code == KeyCode::Char('c')
                             && key.modifiers.contains(KeyModifiers::CONTROL))
-                            && confirm_prev.is_none()
+                            && confirm_data.is_none()
                     {
-                        command_tx.send(Command::Confirm {
-                            message: "Are you sure you want to quit?".to_string(),
-                            previous: dyn_clone::clone_box(&*view),
-                        })?;
+                        let previous = dyn_clone::clone_box(&*view);
+                        command_tx
+                            .send(Command::Confirm(
+                                "Are you sure you want to quit?".to_string(),
+                                ConfirmData {
+                                    previous,
+                                    action: Box::new(|| Some(Command::Quit)),
+                                },
+                            ))
+                            .await?;
                     }
                 }
                 _ => {}

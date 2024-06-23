@@ -1,8 +1,8 @@
-use views::ViewContainer;
-
 pub mod views;
 
-pub type CommandSender = crossbeam_channel::Sender<Command>;
+use views::{confirmation::ConfirmData, ViewContainer};
+
+pub type CommandSender = tokio::sync::mpsc::Sender<Command>;
 
 /// Commands that can be sent to the main loop.
 pub enum Command {
@@ -10,10 +10,8 @@ pub enum Command {
     ChangeView { view: ViewContainer },
     /// Go back to the previous view.
     BackView,
-    /// Stop the main loop.
-    Stop,
-    Confirm {
-        message: String,
-        previous: ViewContainer,
-    },
+    /// Create a confirmation dialog.
+    Confirm(String, ConfirmData),
+    /// Quit the application.
+    Quit,
 }

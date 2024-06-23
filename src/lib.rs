@@ -1,3 +1,5 @@
+#![feature(associated_type_defaults)]
+
 mod error;
 mod profile;
 pub mod tui;

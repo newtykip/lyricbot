@@ -4,11 +4,12 @@ mod prelude;
 
 use super::CommandSender;
 use crate::Result;
+use async_trait::async_trait;
 use crossterm::event::KeyEvent;
 use dyn_clone::DynClone;
 use ratatui::{layout::Rect, Frame};
 
-pub type ViewContainer = Box<dyn View + Send>;
+pub type ViewContainer = Box<dyn View + Send + Sync>;
 
 #[macro_export]
 macro_rules! change_view {
@@ -28,7 +29,8 @@ macro_rules! change_view {
     };
 }
 
+#[async_trait]
 pub trait View: DynClone {
     fn draw(&self, frame: &mut Frame, area: Rect);
-    fn keypress(&mut self, key: KeyEvent, command_tx: &CommandSender) -> Result<()>;
+    async fn keypress(&mut self, key: KeyEvent, command_tx: &CommandSender) -> Result<()>;
 }
