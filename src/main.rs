@@ -56,7 +56,7 @@ async fn main() -> Result<()> {
                     history.push(view);
 
                     new_view
-                }
+                },
                 Command::BackView => {
                     if let Some(ConfirmData { previous, .. }) = confirm_data {
                         confirm_data = None;
@@ -67,11 +67,11 @@ async fn main() -> Result<()> {
                     } else {
                         view
                     }
-                }
+                },
                 Command::Confirm(message, ConfirmData { previous, action }) => {
                     confirm_data = Some(ConfirmData { action, previous });
                     Box::new(Confirmation::new(message, confirm_tx.clone()))
-                }
+                },
                 Command::Quit => {
                     if confirm_data.is_some() {
                         break;
@@ -85,7 +85,7 @@ async fn main() -> Result<()> {
                             confirm_tx.clone(),
                         ))
                     }
-                }
+                },
             };
         }
 
@@ -118,8 +118,8 @@ async fn main() -> Result<()> {
                             ))
                             .await?;
                     }
-                }
-                _ => {}
+                },
+                _ => {},
             }
         }
     }

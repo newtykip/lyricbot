@@ -46,21 +46,21 @@ impl View for Confirmation {
         match key.code {
             KeyCode::Left | KeyCode::Char('a') => {
                 self.yes = true;
-            }
+            },
             KeyCode::Right | KeyCode::Char('d') => {
                 self.yes = false;
-            }
+            },
             KeyCode::Enter => {
                 if self.yes {
                     self.sender.send(()).await?;
                 } else {
                     view_tx.send(Command::BackView).await?;
                 }
-            }
+            },
             KeyCode::Esc => {
                 view_tx.send(Command::BackView).await?;
-            }
-            _ => {}
+            },
+            _ => {},
         }
 
         Ok(())

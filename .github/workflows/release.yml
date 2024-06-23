@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Release - ${{ matrix.platform.release_for }}
+    strategy:
+      matrix:
+        platform:
+          - release_for: Windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin: lyricbot.exe
+            name: lyricbot-Windows-x86_64.zip
+
+          - release_for: macOS-x86_64
+            os: macos-latest
+            target: x86_64-apple-darwin
+            bin: lyricbot
+            name: lyricbot-Darwin-x86_64.tar.gz
+
+          - release_for: Linux-x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            bin: lyricbot
+            name: lyricbot-Linux-x86_64.tar.gz
+
+    runs-on: ${{ matrix.platform.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache cargo and target directories
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install protobuf on Ubuntu
+        if: contains(matrix.platform.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+      - name: Install protobuf on Windows
+        if: contains(matrix.platform.os, 'windows')
+        run: choco install protoc
+      - name: Install protobuf on MacOS
+        if: contains(matrix.platform.os, 'macos')
+        run: brew install protobuf
+
+      - name: Build binary
+        uses: houseabsolute/actions-rust-cross@v0
+        with:
+          target: ${{ matrix.platform.target }}
+          args: "--locked --release"
+          strip: true
+          toolchain: nightly
+
+      - name: Package as archive
+        shell: bash
+        run: |
+          cd target/${{ matrix.platform.target }}/release
+          if [[ "${{ matrix.platform.os }}" == "windows-latest" ]]; then
+            7z a ../../../${{matrix.platform.name}} ${{matrix.platform.bin}}
+          else
+            tar czvf ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}
+          fi
+          cd -
+      
+      - name: Publish release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform.release_for }}
+          path: ${{ matrix.platform.name }}

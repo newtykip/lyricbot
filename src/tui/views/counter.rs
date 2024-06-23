@@ -20,14 +20,14 @@ impl View for Counter {
                     -1
                 };
                 self.count = self.count.saturating_add(dx);
-            }
+            },
             KeyCode::Backspace => {
                 change_view!(view_tx, Counter).await?;
-            }
+            },
             KeyCode::Esc => {
                 view_tx.send(Command::BackView).await?;
-            }
-            _ => {}
+            },
+            _ => {},
         }
 
         Ok(())
